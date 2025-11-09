@@ -1,31 +1,75 @@
-import { DataTypes } from "sequelize";
-import database from "../config/connexion.js"; // Utilisez directement la variable database
+import { validationResult } from 'express-validator';
+import Facture from "../models/Facture.js";
+import factureRules from '../validations/validationFacture.js'; // Importe les règles de validation
 
-import Paiement from "./Paiement.js";
+export const factureCreate = async (req, res) => {
+    // Valide les données de la requête avec les règles définies
+    await Promise.all(factureRules.map(rule => rule.run(req)));
 
-const Facture = database.define('Facture', {
-    facture_id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true
-    }, 
-    paiement_id: {
-        type: DataTypes.INTEGER,
-        references: {
-          model: Paiement,
-          key: 'paiement_id'
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const newFacture = await Facture.create(req.body);
+        res.status(201).json({ data: newFacture });
+    } catch (error) {
+        console.error("Erreur lors de la création de la facture :", error);
+        res.status(500).json({ message: "Erreur lors de la création de la facture" });
+    }
+};
+
+export const factureList = async (req, res) => {
+    try {
+        const factures = await Facture.findAll();
+        res.status(200).json({ data: factures });
+    } catch (error) {
+        console.error("Erreur lors de la récupération des factures :", error);
+        res.status(500).json({ message: "Erreur lors de la récupération des factures" });
+    }
+};
+
+export const factureDetail = async (req, res) => {
+    try {
+        const factureId = req.params.id;
+        const facture = await Facture.findByPk(factureId);
+        if (!facture) {
+            return res.status(404).json({ message: "Facture non trouvée" });
         }
-      },
-      montant: {
-        type: DataTypes.DECIMAL(10, 2)
-      },
-      date_creation: {
-        type: DataTypes.DATE
-      },
-      date_paiement: {
-        type: DataTypes.DATE
-      }
-});
+        res.status(200).json({ data: facture });
+    } catch (error) {
+        console.error("Erreur lors de la récupération du détail de la facture :", error);
+        res.status(500).json({ message: "Erreur lors de la récupération du détail de la facture" });
+    }
+};
 
+export const factureUpdate = async (req, res) => {
+    try {
+        const factureId = req.params.id;
+        const facture = await Facture.findByPk(factureId);
+        if (!facture) {
+            return res.status(404).json({ message: "Facture non trouvée" });
+        }
+        await facture.update(req.body);
+        res.status(200).json({ message: "Facture mise à jour avec succès" });
+    } catch (error) {
+        console.error("Erreur lors de la mise à jour de la facture :", error);
+        res.status(500).json({ message: "Erreur lors de la mise à jour de la facture" });
+    }
+};
 
-export default Facture;
+export const factureDelete = async (req, res) => {
+    try {
+        const factureId = req.params.id;
+        const facture = await Facture.findByPk(factureId);
+        if (!facture) {
+            return res.status(404).json({ message: "Facture non trouvée" });
+        }
+        await facture.destroy();
+        res.status(200).json({ message: "Facture supprimée avec succès" });
+    } catch (error) {
+        console.error("Erreur lors de la suppression de la facture :", error);
+        res.status(500).json({ message: "Erreur lors de la suppression de la facture" });
+    }
+};
